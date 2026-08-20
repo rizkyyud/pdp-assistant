@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: pdp-assistant
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: qwen3:8b
+          temperature: 0.3
+
+logging:
+  level:
+    org.springframework.ai: DEBUG
