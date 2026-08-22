@@ -28,3 +28,17 @@ Percobaan 2: UU 11/2016 ITE Pasal 1 angka 16 (SALAH, beda dari #1)
 - Akurasi: tetap 0/1 — masih UU 11/2016
 - Instruksi "jangan mengarang" tidak berpengaruh
 → Kesimpulan: prompt mengatur bentuk, bukan fakta. Butuh RAG.
+
+## Hari 3 — Eksperimen temperature
+| temp | konsisten? | UU disebut | rata durationMs |
+|------|-----------|--------------------------|------|
+| 0.0  | Ya, identik 3/3 | 11/2016 Ps.1 angka 1 | 3194 |
+| 0.3  | Tidak | 11/2016 & 11/2008, pasal beda | 3226 |
+| 0.9  | Tidak sama sekali | angka 16, 10, 1 | 3538 |
+
+Benar: UU 27/2022 Pasal 1 angka 1. Akurasi 0/9.
+
+Catatan penting: temp 0.0 konsisten TAPI konsisten SALAH.
+Determinisme ≠ kebenaran. Determinisme hanya prasyarat evaluasi.
+
+Keputusan: evaluasi Minggu 4 pakai temp 0.0. Default app tetap 0.3.

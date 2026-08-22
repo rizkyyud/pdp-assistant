@@ -17,10 +17,6 @@ public class ChatConfig {
                 Selalu sebutkan nomor UU dan pasal yang menjadi dasar jawaban.
                 Jika tidak yakin, katakan tidak tahu. Jangan mengarang.
                 """)
-                .defaultOptions(OllamaChatOptions.builder()
-                        .model("qwen3:8b")
-                        .temperature(0.9)
-                        .disableThinking())
                 .build();
     }
 }
