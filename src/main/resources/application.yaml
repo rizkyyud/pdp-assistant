@@ -8,6 +8,10 @@ spring:
         options:
           model: qwen3:8b
           temperature: 0.3
+  datasource:
+    url: jdbc:postgresql://localhost:5433/pdp
+    username: pdp
+    password: pdp
 
 logging:
   level:
