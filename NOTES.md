@@ -42,3 +42,32 @@ Catatan penting: temp 0.0 konsisten TAPI konsisten SALAH.
 Determinisme ≠ kebenaran. Determinisme hanya prasyarat evaluasi.
 
 Keputusan: evaluasi Minggu 4 pakai temp 0.0. Default app tetap 0.3.
+
+## Hari 6 — pgvector via Docker
+
+### Keputusan: pgvector, bukan Pinecone/Qdrant
+Alasan:
+- Satu database untuk data relasional + vektor, tidak perlu layanan terpisah
+- Jalan offline, gratis, tanpa vendor lock-in
+- PostgreSQL sudah umum dipakai perusahaan, mudah diadopsi
+- Cukup untuk skala puluhan ribu chunk
+
+Trade-off: kalah performa dibanding database vektor khusus di skala jutaan vektor.
+
+### Masalah: konflik port 5432
+PostgreSQL lokal (Homebrew) dan container Docker sama-sama mendengarkan
+di 5432. Container tetap bisa start karena binding berbeda (localhost vs *),
+tapi aplikasi berisiko tersambung ke instance yang salah — yang tidak
+punya ekstensi pgvector.
+
+Deteksi: `lsof -i :5432` menampilkan dua proses.
+Solusi: container dipetakan ke 5433, PostgreSQL lokal dibiarkan jalan.
+
+Pelajaran: container "healthy" tidak menjamin aplikasi bicara dengan
+container itu. Selalu verifikasi dari sisi aplikasi, bukan cuma dari
+sisi container.
+
+### Status
+- Container healthy, ekstensi vector aktif
+- Spring Boot tersambung ke localhost:5433
+- Aplikasi start bersih
