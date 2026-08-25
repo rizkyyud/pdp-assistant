@@ -71,3 +71,63 @@ sisi container.
 - Container healthy, ekstensi vector aktif
 - Spring Boot tersambung ke localhost:5433
 - Aplikasi start bersih
+
+## Hari 7 — Ekstraksi PDF & Kualitas Korpus
+
+### Setup
+- Dependency: spring-ai-tika-document-reader
+- DocumentReaderService + endpoint POST /api/ingest/preview
+- Parameter `mulai` & `panjang` supaya bisa jelajahi dokumen tanpa restart
+
+### Temuan awal
+Hasil: 1 Document, 62.230 karakter.
+
+Masalah kualitas:
+1. OCR error: REPUELIK→REPUBLIK, FRESIDEN→PRESIDEN, daLam→dalam,
+   ayat (l)→ayat (1)
+2. Urutan blok teks tidak sesuai urutan baca (Menimbang muncul
+   sebelum judul UU)
+3. Artefak berulang: "SK No \d+A" (stempel), "PRESIDEN REPUBLIK
+   INDONESIA" (kop), "-\d+-" (nomor halaman)
+4. Newline di tengah kalimat, bukan di batas kalimat
+
+### Sampling kualitas per bagian
+| Posisi | Bagian | Kualitas |
+|--------|--------|----------|
+| 0-1.5k | Pembuka | Sedang — urutan blok kacau |
+| 30k | Batang tubuh pasal | Baik — cacat minor |
+| 45k | Penjelasan Umum | RUSAK — "ele&onic @mmet@" |
+| 60k | Penjelasan Pasal | Banyak artefak |
+
+Kerusakan TIDAK terbatas di halaman awal. Bagian Penjelasan Umum
+praktis tidak bisa dipakai.
+
+### Diagnosis
+Gambar pindaian PDF berkualitas baik — yang rusak hanya lapisan
+teks OCR-nya. Setneg melakukan OCR saat membuat PDF ini (2022),
+kemungkinan dengan model bahasa Inggris pada dokumen Indonesia.
+Itu menjelaskan kenapa kata Indonesia rusak parah.
+
+### Solusi: OCR ulang
+ocrmypdf --force-ocr -l ind <input> <output>
+
+Hasil perbandingan:
+| Sebelum | Sesudah |
+|---------|---------|
+| ele&onic @mmet@ (e-ammere) | electronic commerce (e-commerce) |
+| eledrunic dtution (edtt@lion) | electronic education (e-education) |
+| neledronic hmlth (e-leaftfl | electronic health (e-health) |
+| daJarla bidang perdidikan | dalam bidang pendidikan |
+| Felindungan, sanga.t, sahr | Pelindungan, sangat, satu |
+
+Total karakter: 62.230 → 63.033
+Sisa cacat minor: "(" kadang terbaca "f" pada "(e-commerce)"
+
+### Keputusan
+Korpus kerja diganti ke uu-27-2022-clean.pdf.
+PDF lama disimpan sebagai pembanding untuk bagian evaluasi.
+
+### Pelajaran
+Kualitas korpus adalah masalah RAG pertama, bukan chunking.
+Memeriksa data sumber sebelum membangun pipeline menghemat
+berhari-hari kerja sia-sia di hilir.

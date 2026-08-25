@@ -12,7 +12,10 @@ spring:
     url: jdbc:postgresql://localhost:5433/pdp
     username: pdp
     password: pdp
-
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
 logging:
   level:
     org.springframework.ai: DEBUG
