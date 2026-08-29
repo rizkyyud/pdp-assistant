@@ -1,4 +1,4 @@
-package id.rizky.ramadhan.pdp_assistant.chat.service;
+package id.rizky.ramadhan.pdp_assistant.ingestion.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -153,3 +153,29 @@ struktur. Dokumen hukum punya unit makna yang tegas (Pasal).
 
 Keputusan: buat custom splitter berbasis batas "Pasal N" + regex
 pembersih artefak. Nomor pasal disimpan di metadata untuk sitasi.
+
+
+## Hari 9 — Structure-aware chunking
+
+Hasil akhir: 76 chunk, rata-rata 547 karakter (95–2.425).
+Sebelumnya dengan TokenTextSplitter: 22 chunk, rata-rata 2.863,
+pasal terpotong di tengah.
+
+### Perjalanan debugging
+1. Regex ketat `^\s*Pasal\s+(\d+)\s*$` → Pasal 47 hilang.
+   Penyebab: artefak OCR (bintik di margin) menempel di baris yang sama.
+2. Regex longgar (toleran tanda baca) → Pasal 47 tertangkap,
+   tapi muncul duplikat 25 dan 40 dari rujukan silang antar pasal.
+3. Solusi: regex longgar + validasi urutan (nomor harus n+1).
+   Pengetahuan domain (pasal selalu berurutan) menyaring apa yang
+   tidak bisa disaring regex.
+4. Efek samping menguntungkan: bagian Penjelasan otomatis terbuang
+   karena penomorannya mengulang dari kecil.
+
+### Pelajaran
+- Regex saja jarang cukup untuk teks hasil OCR. Pola longgar +
+  validasi domain lebih andal daripada mengejar satu regex sempurna.
+- Urutan operasi penting: TextCleaner sempat merusak struktur baris
+  yang dibutuhkan splitter (replaceAll(" ") vs replaceAll("\n")).
+- Statistik (terpendek/terpanjang) mengungkap bug yang tidak
+  terlihat dari daftar nomor.
