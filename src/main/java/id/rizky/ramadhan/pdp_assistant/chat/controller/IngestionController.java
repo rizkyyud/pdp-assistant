@@ -50,4 +50,38 @@ public class IngestionController {
                 "cuplikan", text.substring(awal, akhir)
         );
     }
+
+    @PostMapping("/chunk")
+    public Map<String, Object> chunk(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "500") int chunkSize,
+            @RequestParam(defaultValue = "3") int tampilkan) throws IOException {
+
+        var resource = new InputStreamResource(file.getInputStream()) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        };
+
+        List<Document> chunks = documentReaderService.chunk(documentReaderService.read(resource), chunkSize);
+
+        var contoh = chunks.stream()
+                .limit(tampilkan)
+                .map(c -> Map.of(
+                        "panjang", c.getText().length(),
+                        "isi", c.getText()))
+                .toList();
+
+        var panjangSemua = chunks.stream().mapToInt(c -> c.getText().length()).summaryStatistics();
+
+        return Map.of(
+                "chunkSize", chunkSize,
+                "jumlahChunk", chunks.size(),
+                "rataPanjang", (int) panjangSemua.getAverage(),
+                "terpendek", panjangSemua.getMin(),
+                "terpanjang", panjangSemua.getMax(),
+                "contoh", contoh
+        );
+    }
 }

@@ -131,3 +131,25 @@ PDF lama disimpan sebagai pembanding untuk bagian evaluasi.
 Kualitas korpus adalah masalah RAG pertama, bukan chunking.
 Memeriksa data sumber sebelum membangun pipeline menghemat
 berhari-hari kerja sia-sia di hilir.
+
+## Hari 8 — Chunking
+| chunkSize | jumlah | rata | pasal utuh? | nomor pasal terbawa? |
+|-----------|--------|------|-------------|---------------------|
+| 200 | 111 | 566 | Tidak | Tidak |
+| 500 | 44 | 1431 | Tidak | Tidak |
+| 1000 | 22 | 2863 | Tidak | Tidak |
+
+Kegagalan TokenTextSplitter pada dokumen hukum:
+- Definisi Korporasi terbelah 2 chunk di tengah kalimat
+- Satu chunk memuat Pasal 6-15 sekaligus (10 pasal tak berhubungan)
+- Nomor pasal terpisah dari isi ("Pasal 6" di akhir chunk, isinya
+  di chunk berikutnya) → sitasi mustahil
+- Artefak "SK No", kop, nomor halaman masih bertebaran
+- chunkSize adalah token, bukan karakter. minChunkSizeChars=350
+  membatasi hasil akhir
+
+Akar masalah: splitter memotong berdasarkan panjang, buta terhadap
+struktur. Dokumen hukum punya unit makna yang tegas (Pasal).
+
+Keputusan: buat custom splitter berbasis batas "Pasal N" + regex
+pembersih artefak. Nomor pasal disimpan di metadata untuk sitasi.
