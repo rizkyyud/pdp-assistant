@@ -179,3 +179,24 @@ pasal terpotong di tengah.
   yang dibutuhkan splitter (replaceAll(" ") vs replaceAll("\n")).
 - Statistik (terpendek/terpanjang) mengungkap bug yang tidak
   terlihat dari daftar nomor.
+
+## Hari 10 — Embedding & vector store
+
+Model embedding: bge-m3 (1024 dimensi, multilingual 100+ bahasa)
+Alasan: korpus berbahasa Indonesia. Model embedding default
+kebanyakan berat ke bahasa Inggris.
+
+Hasil: 76 chunk tersimpan di pgvector, metadata pasal utuh.
+Durasi ingest: <isi angka durasiMs>
+
+Utang teknis:
+- vectorStore.add() selalu menambah, tidak upsert. Ingest ulang
+  menghasilkan duplikat. Sementara: TRUNCATE manual sebelum ingest.
+- Tabel vector_store dibuat dengan dimensi tetap 1024. Ganti model
+  embedding berarti harus DROP tabel dulu.
+
+Catatan: Pasal 3 (daftar asas) terlihat berantakan di potongan awal.
+Jadikan pertanyaan uji Minggu 4: "Apa saja asas dalam UU PDP?"
+
+Kendala: Docker Desktop tidak jalan setelah restart laptop →
+bean vectorStore gagal dibuat. Biasakan `docker compose ps` di awal sesi.

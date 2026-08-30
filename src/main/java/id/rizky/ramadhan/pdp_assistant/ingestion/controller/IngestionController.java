@@ -1,6 +1,7 @@
 package id.rizky.ramadhan.pdp_assistant.ingestion.controller;
 
 import id.rizky.ramadhan.pdp_assistant.ingestion.service.DocumentReaderService;
+import id.rizky.ramadhan.pdp_assistant.ingestion.service.IngestionService;
 import id.rizky.ramadhan.pdp_assistant.ingestion.service.PasalSplitter;
 import id.rizky.ramadhan.pdp_assistant.ingestion.service.TextCleaner;
 import org.springframework.ai.document.Document;
@@ -22,13 +23,16 @@ public class IngestionController {
     private final DocumentReaderService documentReaderService;
     private final TextCleaner textCleaner;
     private final PasalSplitter pasalSplitter;
+    private final IngestionService ingestionService;
 
     public IngestionController(DocumentReaderService documentReaderService,
                                TextCleaner textCleaner,
-                               PasalSplitter pasalSplitter) {
+                               PasalSplitter pasalSplitter,
+                               IngestionService ingestionService) {
         this.documentReaderService = documentReaderService;
         this.textCleaner = textCleaner;
         this.pasalSplitter = pasalSplitter;
+        this.ingestionService = ingestionService;
     }
 
     @PostMapping("/preview")
@@ -135,6 +139,24 @@ public class IngestionController {
                 "posisiPasal47", teks.indexOf("Pasal 47"),
                 "totalKarakter", teks.length(),
                 "cuplikan", teks.substring(awal, akhir)
+        );
+    }
+
+    @PostMapping("/store")
+    public Map<String, Object> store(@RequestParam("file") MultipartFile file) throws IOException {
+        long start = System.currentTimeMillis();
+
+        var resource = new InputStreamResource(file.getInputStream()) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        };
+
+        int jumlah = ingestionService.ingest(resource, file.getOriginalFilename());
+        return Map.of(
+                "chunkTersimpan", jumlah,
+                "durasiMs", System.currentTimeMillis() - start
         );
     }
 }
