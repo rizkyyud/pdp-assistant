@@ -1,4 +1,4 @@
-package id.rizky.ramadhan.pdp_assistant.config;
+package id.rizky.ramadhan.pdp_assistant.chat.config;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;

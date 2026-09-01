@@ -200,3 +200,23 @@ Jadikan pertanyaan uji Minggu 4: "Apa saja asas dalam UU PDP?"
 
 Kendala: Docker Desktop tidak jalan setelah restart laptop →
 bean vectorStore gagal dibuat. Biasakan `docker compose ps` di awal sesi.
+
+## Hari 11 — Similarity search
+| Pertanyaan | Pasal benar | Rank | Skor | Lolos? |
+|-----------|-------------|------|------|--------|
+| Apa itu data pribadi | 1 | 1 | 0.683 | Ya |
+| Asas UU PDP | 3 | 2 | 0.461 | Sebagian |
+| Batas waktu kebocoran | 46 | 1 | 0.642 | Ya |
+| Denda korporasi | 70 | 1 | 0.695 | Ya |
+| Cara mengurus SIM | - | - | 0.494 | Benar-benar rendah |
+
+Hit@1 = 3/4 · Hit@5 = 4/4
+Latensi: 1.357ms (cold) → ~80ms (warm)
+
+MASALAH: Pasal 3 (0.461) skornya DI BAWAH query out-of-scope (0.494).
+Penyebab: teks Pasal 3 rusak OCR (daftar asas jadi "a. v : pelindungan").
+Implikasi: ambang tunggal tidak bisa memisahkan relevan vs tidak relevan
+selama masih ada chunk dengan kualitas teks buruk.
+
+Kandidat ambang: 0.55 (menolak SIM, tapi juga menolak Pasal 3)
+Keputusan ditunda ke Hari 15 setelah data lebih banyak.
