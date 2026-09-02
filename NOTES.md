@@ -220,3 +220,63 @@ selama masih ada chunk dengan kualitas teks buruk.
 
 Kandidat ambang: 0.55 (menolak SIM, tapi juga menolak Pasal 3)
 Keputusan ditunda ke Hari 15 setelah data lebih banyak.
+
+## Hari 12 — RAG lengkap
+
+### Hasil: 5/5 benar (baseline Hari 3: 0/9)
+
+| Pertanyaan | Hari 3 (tanpa RAG) | Hari 12 (dengan RAG) |
+|-----------|--------------------|-----------------------|
+| Data pribadi | UU 11/2016 ITE (salah) | UU 27/2022 Pasal 1 |
+| Asas UU PDP | - | 8 asas lengkap, Pasal 3 |
+| Batas waktu kebocoran | - | 3x24 jam, Pasal 46 ayat (1) |
+| Denda korporasi | - | 10x maksimal, Pasal 70 ayat (2) |
+| Cara mengurus SIM | - | Menolak menjawab |
+
+### Eksperimen thinking mode & metadata
+
+| Konfigurasi | Rata latensi | Sitasi UU |
+|-------------|--------------|-----------|
+| Thinking ON | 37.8 s | Benar |
+| Thinking OFF | 6.4 s | SALAH — mengarang UU 19/2019 |
+| Thinking OFF + nomor UU di konteks | 5.8 s | Benar |
+
+Latensi turun 85% tanpa mengorbankan akurasi.
+
+### Temuan utama
+
+1. **Model hanya bisa mengutip apa yang ada di prompt.**
+   Konteks awal hanya ditandai "[Pasal 1]" tanpa nomor UU. Model tahu
+   pasalnya tapi harus menebak undang-undangnya, lalu mengarang
+   UU 19/2019. Setelah metadata `peraturan` disertakan ke penanda
+   konteks, halusinasi hilang. Ini kesalahan konstruksi prompt,
+   bukan kesalahan model.
+
+2. **Thinking mode membantu model berpegang pada konteks.**
+   Saat dimatikan, model lebih cepat "melompat" ke pola dari
+   ingatannya. Diatasi dengan memperkaya konteks, bukan dengan
+   menyalakan kembali thinking.
+
+3. **Retrieval tidak sempurna masih bisa menghasilkan jawaban benar.**
+   Pasal 3 hanya rank-2 dengan skor 0.461 dan teksnya rusak OCR
+   ("a. v : pelindungan"), tapi model berhasil memulihkan kedelapan
+   asas. Yang penting chunk benar masuk top-K, bukan harus rank-1.
+
+4. **Instruksi menolak menjawab dipatuhi.**
+   Pertanyaan SIM mendapat 5 pasal tentang perlindungan data, model
+   tetap menolak. Berbeda dari Hari 3 ketika instruksi "jangan
+   mengarang" diabaikan total — bedanya sekarang ada konteks nyata
+   untuk berpegang.
+
+5. **Model mengolah, bukan sekadar mengutip.**
+   Sempat menjawab "72 jam" padahal dokumen menulis "3 x 24 jam".
+   Hilang setelah thinking dimatikan, tapi perilaku ini perlu
+   diawasi di konteks hukum.
+
+### Utang teknis
+- Sitasi ayat belum terverifikasi. "Pasal 70 ayat (2)" perlu dicek —
+  dugaan seharusnya ayat (3). Metadata baru sampai tingkat pasal.
+- Sitasi masih melalui teks jawaban model, artinya bisa salah.
+  Hari 13: kembalikan daftar sumber terpisah dari metadata.
+- ChatConfig.defaultSystem dari Hari 2 bertentangan dengan prompt RAG.
+  Sudah dinetralkan.
