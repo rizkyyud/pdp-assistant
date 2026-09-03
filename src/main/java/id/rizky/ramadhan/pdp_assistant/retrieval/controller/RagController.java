@@ -19,6 +19,6 @@ public class RagController {
     @PostMapping("/ask")
     public RagReply ask(@RequestBody ChatRequest request,
                                   @RequestParam(defaultValue = "5") int topK){
-        return ragService.jawab(request.message(), topK);
+        return ragService.jawab(request, topK);
     }
 }

@@ -22,7 +22,7 @@ public class ChatController {
     @PostMapping
     public ChatReply chat(@RequestBody ChatRequest request) {
         long startTime = System.currentTimeMillis();
-        double temp = request.temperature() != null ? request.temperature() : 0.3;
+        double temp = 0.3;
 
         String answer = chatClient.prompt()
                 .user(request.message())

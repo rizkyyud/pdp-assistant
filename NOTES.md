@@ -310,3 +310,61 @@ Temuan: pertanyaan berantai BERHASIL. Model merangkai Pasal 68
 
 Retrieval juga menyesuaikan: pertanyaan spesifik menaikkan Pasal 68
 ke rank-1 (0.715), Pasal 70 turun ke rank-4.
+
+## Hari 14 — Chat memory & query rewriting
+
+### Temuan arsitektural
+Memory advisor hanya menyuntikkan riwayat ke prompt LLM. Retrieval
+buta terhadap konteks percakapan — query ke vector store adalah teks
+mentah pengguna.
+
+"Apa saja jenisnya?" dicari sebagai frasa tanpa makna. Skor 0.439,
+lebih rendah dari query out-of-scope Hari 11 (0.494). Sempat terlihat
+berhasil hanya karena kebetulan kosakata.
+
+Solusi: query rewriting sebelum retrieval.
+
+### Hasil
+| Giliran | Tulis ulang | Skor |
+|---------|-------------|------|
+| Apa saja jenisnya? | "Apa saja jenis data pribadi?" | 0.439 → 0.698 (+59%) |
+| Apa sanksinya kalau itu dilanggar? | ditolak penjagaan | 0.591 |
+| Berapa lama batas waktunya? | ditolak penjagaan | 0.570 |
+
+Keberhasilan: 1/3. Model kecil kewalahan saat riwayat memanjang.
+
+### Keputusan arsitektur: dua model berbeda ukuran
+qwen3:8b untuk menjawab, qwen3:1.7b untuk tulis ulang.
+Alasan: tulis ulang adalah tugas mekanis (mengganti kata rujukan),
+tidak butuh penalaran.
+
+Dampak: puncak memori 6.6 GB → 3.1 GB. Sebelumnya sistem hang di
+laptop 16 GB. Kualitas tulis ulang tidak turun (tetap 1/3).
+
+### Kendala berurutan yang ditemui
+1. rewriteClient mewarisi defaultSystem "asisten hukum" → menjawab
+   alih-alih menulis ulang. Diperbaiki dengan system prompt terpisah.
+2. Penjagaan output ditambahkan (tolak blank, >200 char, tanpa "?").
+   Tanpa ini, satu kegagalan mencemari riwayat dan merusak giliran
+   berikutnya.
+3. defaultAdvisors error saat conversationId null. Diperbaiki dengan
+   ID acak sementara.
+4. Riwayat difilter ke pesan USER saja. Tanpa filter, model membaca
+   jawaban sebelumnya dan menghasilkan esai 500 kata berisi halusinasi
+   (Kemenkominfo, denda Rp1 miliar — semuanya karangan).
+
+### Pelajaran debugging
+Menghabiskan waktu lama menduga perubahan kode (filter USER) yang
+menyebabkan sistem hang. Ternyata penyebabnya penumpukan memori dari
+request beruntun. Gejala muncul jauh dari penyebabnya.
+
+Aturan: sebelum menyalahkan perubahan terakhir, cek dulu apakah
+perubahan itu menambah atau mengurangi pekerjaan. Filter USER
+mengurangi prompt 30x — mustahil membuat lebih berat.
+
+### Utang teknis
+- pasalDisebutModel sering kosong. Format jawaban berubah jadi
+  "Nomor pasal: 4", regex `Pasal\s+(\d+)` tidak cocok.
+  Verifikasi sitasi Hari 13 tidak berfungsi.
+- "Berapa lama batas waktunya?" ambigu — UU punya 4 ketentuan
+  3x24 jam berbeda. Sistem menebak, seharusnya minta klarifikasi.
