@@ -280,3 +280,33 @@ Latensi turun 85% tanpa mengorbankan akurasi.
   Hari 13: kembalikan daftar sumber terpisah dari metadata.
 - ChatConfig.defaultSystem dari Hari 2 bertentangan dengan prompt RAG.
   Sudah dinetralkan.
+
+## Hari 13 — Sitasi terstruktur
+
+Respons berubah dari string menjadi RagReply:
+{jawaban, sumber[], pasalDisebutModel[], sitasiTerverifikasi, durasiMs}
+
+Sitasi pasal diambil dari metadata database, bukan dari teks model.
+Verifikasi silang: pasal yang disebut model dibandingkan dengan pasal
+yang benar-benar di-retrieve. Halusinasi sitasi terdeteksi otomatis.
+
+### Keputusan: sitasi dibatasi tingkat pasal
+Penanda ayat (1)(2)(3) hilang tidak konsisten saat OCR — hanya pada
+pasal berayat banyak (Pasal 70 rusak, Pasal 66/68/69 utuh karena
+satu paragraf). Model menebak nomor ayat dan salah (menyebut ayat 2,
+seharusnya ayat 3). Prompt diubah: dilarang menyebut ayat.
+
+Membatasi klaim sistem pada data yang tersedia lebih baik daripada
+sitasi presisi yang salah.
+
+### Hasil uji
+| Pertanyaan | Jawaban | Sitasi valid | Durasi |
+|-----------|---------|--------------|--------|
+| Denda maksimal korporasi | 10x maksimal, Pasal 70 | true | 9.361 ms |
+| Denda rupiah korporasi palsukan data | Rp60 miliar, Pasal 68 & 70 | true | 6.995 ms |
+
+Temuan: pertanyaan berantai BERHASIL. Model merangkai Pasal 68
+(maks Rp6 M) dengan Pasal 70 (10x lipat) → Rp60 M. Di luar dugaan.
+
+Retrieval juga menyesuaikan: pertanyaan spesifik menaikkan Pasal 68
+ke rank-1 (0.715), Pasal 70 turun ke rank-4.

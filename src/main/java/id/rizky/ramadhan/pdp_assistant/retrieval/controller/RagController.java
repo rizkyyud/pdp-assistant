@@ -1,6 +1,7 @@
 package id.rizky.ramadhan.pdp_assistant.retrieval.controller;
 
 import id.rizky.ramadhan.pdp_assistant.chat.dto.ChatRequest;
+import id.rizky.ramadhan.pdp_assistant.retrieval.dto.RagReply;
 import id.rizky.ramadhan.pdp_assistant.retrieval.service.RagService;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,13 +17,8 @@ public class RagController {
     }
 
     @PostMapping("/ask")
-    public Map<String,Object> ask(@RequestBody ChatRequest request,
+    public RagReply ask(@RequestBody ChatRequest request,
                                   @RequestParam(defaultValue = "5") int topK){
-        long start = System.currentTimeMillis();
-        String jawaban = ragService.jawab(request.message(), topK);
-        return Map.of(
-                "jawaban",jawaban,
-                "durasiMs",System.currentTimeMillis()-start
-        );
+        return ragService.jawab(request.message(), topK);
     }
 }
