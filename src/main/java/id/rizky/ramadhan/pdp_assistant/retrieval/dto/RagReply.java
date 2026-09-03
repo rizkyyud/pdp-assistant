@@ -7,6 +7,8 @@ public record RagReply(
         String pertanyaanRetrieval,
         List<Sumber> sumber,
         List<String> pasalDisebutModel,
+        List<String> pasalHalusinasi,
+        boolean adaSitasi,
         boolean sitasiTerverifikasi,
         long durasiMs
 ) {}

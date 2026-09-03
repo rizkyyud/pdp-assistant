@@ -6,6 +6,7 @@ import id.rizky.ramadhan.pdp_assistant.retrieval.dto.Sumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
@@ -14,9 +15,7 @@ import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -26,19 +25,26 @@ public class RagService {
     private final Logger log = LoggerFactory.getLogger(RagService.class);
 
     private static final String TEMPLATE = """
-            Jawab pertanyaan HANYA berdasarkan kutipan peraturan di bawah ini.
-            Jika jawabannya tidak ada dalam kutipan, katakan bahwa informasi
-            tersebut tidak ditemukan dalam dokumen.
-            
-            Sebutkan nomor pasal yang menjadi dasar jawaban.
-            JANGAN menyebut nomor ayat — cukup nomor pasal saja.
-            
-            === KUTIPAN PERATURAN ===
-            %s
-            === AKHIR KUTIPAN ===
-            
-            Pertanyaan: %s
-            """;
+    Jawab pertanyaan HANYA berdasarkan kutipan peraturan di bawah ini.
+    Jika jawabannya tidak ada dalam kutipan, katakan bahwa informasi
+    tersebut tidak ditemukan dalam dokumen.
+    
+    Tulis jawaban singkat maksimal 3 kalimat, lalu baris terakhir
+    berisi dasar hukumnya. Contoh format yang benar:
+    
+    Data Pribadi adalah data tentang orang perseorangan yang dapat
+    diidentifikasi.
+    DASAR: Pasal 1
+    
+    Jika lebih dari satu pasal: DASAR: Pasal 5, Pasal 12
+    JANGAN menyebut nomor ayat. JANGAN menyalin teks contoh di atas.
+    
+    === KUTIPAN PERATURAN ===
+    %s
+    === AKHIR KUTIPAN ===
+    
+    Pertanyaan: %s
+    """;
 
     private static final String REWRITE = """
         Ubah pertanyaan terakhir menjadi pertanyaan mandiri dengan
@@ -63,6 +69,7 @@ public class RagService {
     private final ChatMemory chatMemory;
 
     private static final Pattern SEBUT_PASAL = Pattern.compile("Pasal\\s+(\\d+)");
+    private static final Pattern NOMOR_PASAL = Pattern.compile("[Nn]omor pasal:\\s*([\\d,\\s]+)");
 
     public RagService(ChatClient chatClient,
                       @Qualifier("rewriteClient") ChatClient rewriteClient,
@@ -92,12 +99,16 @@ public class RagService {
 
         String jawaban = chatClient.prompt()
                 .user(TEMPLATE.formatted(kutipan, request.message()))
+                .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, convId))
                 .options(OllamaChatOptions.builder()
                         .temperature(0.0)
                         .disableThinking())
                 .call()
                 .content();
+
+        jawaban = jawaban.replaceAll("\\s*ayat\\s*\\(\\w+\\)", "")
+                .replaceAll("\\s*huruf\\s+\\w\\b", "");
 
         List<Sumber> sumber = konteks.stream()
                 .map(d -> new Sumber(
@@ -107,22 +118,41 @@ public class RagService {
                         potong(d.getText(), 300)))
                 .toList();
 
-        List<String> disebut = ekstrakPasal(jawaban);
+
         Set<String> tersedia = konteks.stream()
                 .map(d -> (String) d.getMetadata().get("pasal"))
                 .collect(Collectors.toSet());
 
-        boolean valid = tersedia.containsAll(disebut);
+        List<String> disebut = ekstrakPasal(jawaban);
+        boolean adaSitasi = !disebut.isEmpty();
+        boolean valid = adaSitasi && tersedia.containsAll(disebut);
 
-        return new RagReply(jawaban, pertanyaanRetrieval, sumber, disebut, valid,
+        List<String> pasalHalusinasi = disebut.stream()
+                .filter(p -> !tersedia.contains(p))
+                .toList();
+
+        if (!pasalHalusinasi.isEmpty()) {
+            log.warn("Model menyebut pasal di luar konteks: {}", pasalHalusinasi);
+        }
+
+        return new RagReply(jawaban, pertanyaanRetrieval, sumber,
+                disebut, pasalHalusinasi, adaSitasi, valid,
                 System.currentTimeMillis() - start);
     }
 
     private List<String> ekstrakPasal(String jawaban) {
-        return SEBUT_PASAL.matcher(jawaban).results()
+        var hasil = new LinkedHashSet<String>();
+
+        SEBUT_PASAL.matcher(jawaban).results()
                 .map(r -> r.group(1))
-                .distinct()
-                .toList();
+                .forEach(hasil::add);
+
+        NOMOR_PASAL.matcher(jawaban).results()
+                .flatMap(r -> Arrays.stream(r.group(1).split("[,\\s]+")))
+                .filter(s -> s.matches("\\d+"))
+                .forEach(hasil::add);
+
+        return List.copyOf(hasil);
     }
 
     private String potong(String teks, int maks) {
@@ -139,6 +169,8 @@ public class RagService {
         String ringkas = riwayat.stream()
                 .filter(m -> m.getMessageType() == MessageType.USER)
                 .map(Message::getText) .collect(Collectors.joining("\n"));
+
+        log.info("Prompt rewriter:\n{}", REWRITE.formatted(ringkas, pertanyaan));
 
         String hasil = rewriteClient.prompt()
                 .user(REWRITE.formatted(ringkas, pertanyaan))

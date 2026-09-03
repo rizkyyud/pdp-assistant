@@ -12,10 +12,9 @@ import org.springframework.context.annotation.Configuration;
 public class ChatConfig {
 
     @Bean
-    ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
+    ChatClient chatClient(ChatClient.Builder builder) {
         return builder
                 .defaultSystem("Anda asisten yang menjawab berdasarkan dokumen yang diberikan.")
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
 
